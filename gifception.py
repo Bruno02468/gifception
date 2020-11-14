@@ -4,7 +4,7 @@
 
 # Pillow is required
 try:
-  from PIL import Image, ImageDraw
+  from PIL import Image
 except:
   print("Install Pillow. May I suggest `pip3 install pillow`?")
   raise
@@ -59,7 +59,7 @@ class AnchoredImage():
     ox = rel_x * w * (1 - 1/factor)
     oy = rel_y * h * (1 - 1/factor)
     if rounding:
-      ox, oy, ws, hs = map(round, (ox, oy, ws, hs))
+      ox, oy, ws, hs = map(math.ceil, (ox, oy, ws, hs))
     corners = (ox, oy), (ox+ws, oy+hs)
     box = (ox, oy, ox+ws, oy+hs)
     return corners, box
@@ -68,7 +68,7 @@ class AnchoredImage():
   def zoom_in(self, factor):
     _, box = self._zoom_in_box(factor)
     w, h = self.size()
-    self.img = self.img.crop(box).resize((w, h), self.config["resampler"])
+    self.img = self.img.resize((w, h), self.config["resampler"], box=box)
 
   # computes the absolute position for the anchor
   def anchor_absolute(self):
@@ -271,9 +271,9 @@ class Gifception():
     return td
 
 
-def test(f = True, r = Image.BICUBIC):
+def test(pw = True, r = Image.BICUBIC):
   bbr_pil = Image.open("bbr.png").convert("RGBA")
-  abs_anchor = (65, 64+12)
+  abs_anchor = (66, 64+12)
   bbr = AnchoredImage(bbr_pil, abs_anchor, False)
   test_config = {
     "max_pixels": 8e8,
@@ -281,14 +281,26 @@ def test(f = True, r = Image.BICUBIC):
     "resampler": r
   }
   test_params = {
-    "preup": 10,
+    "preup": 4,
     "inner_scale": 20,
     "downscale": 1,
-    "num_frames": 120,
-    "fps": 60,
-    "paste_within": f
+    "num_frames": 50,
+    "fps": 50,
+    "paste_within": pw
   }
   gf = Gifception(bbr, test_config, test_params)
-  gf.prepare_nested_base()
-  gf.nested_base.save("nested.png")
-  return gf.make_frames()
+  print("Doing frames...")
+  tdir = gf.make_frames()
+  from gcanimators import PillowGIF as pg, FFmpegBindings as ff
+  a = pg(tdir, test_params)
+  print("Doing Pillow GIF...")
+  a.animate("pillow.gif")
+  ff = ff(tdir, test_params)
+  print("Doing FFmpeg GIF...")
+  ff.animate("ff.gif")
+  print("Doing FFmpeg WebM...")
+  ff.animate("ff.webm")
+  print("Done.")
+
+if __name__ == "__main__":
+  test()

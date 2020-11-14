@@ -1,0 +1,6 @@
+# pycache, as always
+__pycache__
+# test files
+nested.png
+*.gif
+*.webm
